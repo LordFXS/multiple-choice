@@ -1,0 +1,278 @@
+% This package is for generating multiple-choice tests
+% 
+% (c) Martin Eik Korsgaard Rasmussen
+%
+%% This program can be redistributed and/or modified under the terms
+%% of the LaTeX Project Public License Distributed from CTAN archives
+%% in directory macros/latex/base/lppl.txt.
+% 
+\NeedsTeXFormat{LaTeX2e}[1994/06/01]
+\ProvidesPackage{multiple-choice}
+  [15/06/2016 v0.1 LaTeX package for writing multiple choice tests]
+  
+\RequirePackage{amsmath}
+\RequirePackage{enumitem}
+\RequirePackage{etoolbox}
+\RequirePackage{a4wide}
+\RequirePackage[top=2cm,bottom=1cm,right=1cm,left=2cm]{geometry}
+
+\newcounter{myseed}
+\newcounter{question}
+\setcounter{question}{0}
+\newcounter{inQuestion}
+\setcounter{inQuestion}{0}
+\newcounter{inGroup}
+\setcounter{inGroup}{0}
+\newcounter{groupHeading}
+\newcounter{groupText}
+\newcounter{tmpQuestion}
+
+\pagenumbering{gobble}
+
+\newcommand{\testNumber}{}
+\newcommand{\showKeys}{0}
+
+\newcounter{option}
+\BeforeBeginEnvironment{options}{\setcounter{option}{0}}
+\AfterEndEnvironment{options}{%
+    \ifnum\value{option} > 0 
+        {}%Everything is fine
+    \else % Generate error if there is no non key option
+        \GenericError{Error}{There must be a distractor/non-key option in each list of options}{}
+    \fi
+}
+
+\newcommand{\option}[1][$\alpha$]{%
+    \stepcounter{option}
+    \ifnum\value{inOptions} = 1
+        \item[{#1 \framebox[4mm]{\rule{0mm}{2mm}}}] 
+    \else
+        \GenericError{Error}{An option must be inside an options environment}{}
+    \fi
+}{}
+
+
+\newcounter{inOptions}
+\setcounter{inOptions}{0}
+\BeforeBeginEnvironment{options}{\stepcounter{inOptions}}
+\AfterEndEnvironment{options}{\addtocounter{inOptions}{-1}}
+
+\newenvironment{options}{%
+    \ifnum\value{inQuestion} = 1 
+        \begin{description}[align=right,labelwidth=0.45cm]%
+            \setlength\itemsep{0em}
+
+    \else % Generate error if the options env is not inside a question env
+        \GenericError{Error}{Options environments must be inside a question environment.}{}
+    \fi
+}{%
+    \ifnum\value{inQuestion} = 1 
+
+        \end{description}%
+        \stepcounter{options}
+    \else % Generate error if the options env is not inside a question env
+        \GenericError{Error}{Options environments must be inside a question environment.}{}
+    \fi
+}
+
+\newcounter{key}
+\BeforeBeginEnvironment{options}{\setcounter{key}{0}}
+\AfterEndEnvironment{options}{%
+    \ifnum\value{key} > 0 
+        {}%Everything is fine
+    \else % Generate error if there is no key
+        \GenericError{Error}{There must be a key in each list of options}{}
+    \fi
+}
+
+
+
+
+
+\newcommand{\key}[1][$\alpha$]{%
+    \ifnum\value{inOptions} = 1
+        %\ifnum\value{key} = 0 
+            \stepcounter{key}% Increment counter on first occurrence of key
+            \ifnum\showKeys = 1
+                \item[{#1 \framebox[4mm]{X\rule{0mm}{2mm}}}]
+            \else
+                \item[{#1 \framebox[4mm]{\rule{0mm}{2mm}}}]
+            \fi
+        %\else
+           % \GenericError{Error}{There can only be one key per question}{}
+        %\fi
+    \else
+        \GenericError{Error}{A key must be inside an options environment}{}
+    \fi
+}
+
+
+\newcounter{options}
+\BeforeBeginEnvironment{options}{\setcounter{options}{0}}
+\AfterEndEnvironment{question}{%
+    \ifnum\value{options} = 1 
+        {}%Everything is fine
+    \else % Generate error if there is no options
+        \GenericError{Error}{There must be one and only one options environment in every question environment}{}
+    \fi
+}
+
+\newcounter{stem}
+\BeforeBeginEnvironment{question}{\setcounter{stem}{0}}
+\AfterEndEnvironment{question}{%
+    \ifnum\value{stem} = 1 
+        {}%Everything is fine
+    \else % Generate error if there is no stem
+        \GenericError{Error}{There must be one and only one stem in every question environment}{}
+    \fi
+}
+
+\newcommand{\stem}{%
+    \ifnum\value{inQuestion} = 1 
+        %Everything is fine
+        \stepcounter{stem}
+    \else % Generate error if the stem is not inside a question env.
+        \GenericError{Error}{The stem command must be inside a question environment.}{}
+    \fi
+}
+
+
+\newcounter{weight}
+\BeforeBeginEnvironment{question}{\setcounter{weight}{0}}
+\AfterEndEnvironment{question}{%
+    \ifnum\value{weight} = 1 
+        {}%Everything is fine
+    \else 
+        \ifnum\value{weight} = 0
+            {}%Everything is fine
+        \else % Generate error if there more then one weight
+            \GenericError{Error}{A question can only have one weight.}{}
+        \fi
+    \fi
+}
+
+\newcommand{\weight}[1]{%
+    \ifnum\value{inQuestion} = 1 
+        \ifnum#1 > -1
+            %Everything is fine
+            \stepcounter{weight}
+        \else % Generate error if the value is not a positive number
+            \GenericError{Error}{The value of a weight must be 0 or greater.}{}
+        \fi
+    \else % Generate error if the weight is not inside a question env
+        \GenericError{Error}{The weight command must be inside a question environment.}{}
+    \fi
+}
+
+
+\BeforeBeginEnvironment{question}{\stepcounter{inQuestion}}
+\AfterEndEnvironment{question}{\addtocounter{inQuestion}{-1}}
+
+\newenvironment{question}[1][-1]{%
+    \ifnum\value{inGroup} = 1 
+        %Everything is fine
+        
+        \noindent
+        \begin{minipage}{\textwidth}\vspace*{3mm}
+        \noindent\hspace*{-5cm}\rule{30cm}{1pt}
+        \;\\
+        \textbf{\Large Question \arabic{question}}\vspace*{1mm} \hfill \framebox[10mm]{\answered{#1}\rule{0mm}{7mm}}\\
+        \stepcounter{question}
+    \else % Generate error if the outlaying environment is not questionGroup
+        \GenericError{Error}{The question environment must be inside a questionGroup environment.}{}
+    \fi
+}{%
+    \end{minipage}
+}
+
+
+\newcommand{\groupHeading}[1]{
+    \ifnum\value{inGroup} = 1 
+        %Everything is fine
+        \begin{center}
+            {\LARGE\textsf{-- #1 --}}
+        \end{center} 
+        \stepcounter{groupHeading}
+    \else % Generate error if the outlaying environment is not questionGroup
+        \GenericError{Error}{The groupHeading command must be inside a questionGroup environment.}{}
+    \fi
+}
+
+
+\newenvironment{groupText}{%
+    \ifnum\value{inGroup} = 1 
+        %Everything is fine
+        \stepcounter{groupText}
+    \else % Generate error if the outlaying environment is not questionGroup
+        \GenericError{Error}{The groupText environment must be inside a questionGroup environment.}{}
+    \fi
+    \noindent
+}{%
+}
+
+
+\BeforeBeginEnvironment{questionGroup}{%
+    \stepcounter{inGroup}
+    \setcounter{groupHeading}{0}
+    \setcounter{groupText}{0}
+    \setcounter{tmpQuestion}{\value{question}}
+    }
+\AfterEndEnvironment{questionGroup}{\addtocounter{inGroup}{-1}}
+
+\newenvironment{questionGroup}{%
+    \ifnum\value{test} = 1
+        \clearpage
+    \else
+        \GenericError{Error}{A questionGroup must be inside a test environment.}{}
+    \fi
+}{%
+    \ifnum\value{groupHeading} = 1 
+        {}%Everything is fine
+    \else % Generate error if there is no groupHeading
+        \GenericError{Error}{There must be one and only one groupHeading inside a questionGroup environment.}{}
+    \fi
+    \ifnum\value{groupText} = 1 
+        {}%Everything is fine
+    \else 
+        \ifnum\value{groupText} = 0
+            {}%Everything is fine
+        \else % Generate error if there is more then one groupText
+            \GenericError{Error}{There must be one and only one groupText inside a questionGroup environment.}{}
+        \fi
+    \fi
+    \ifnum\value{question} > \value{tmpQuestion}
+        {}%Everything is fine
+    \else % Generate error if there is no questions inside the group
+        \GenericError{Error}{There must be at least one question environment inside a questionGroup environment.}{}
+    \fi
+    
+}
+
+\newcounter{test}
+\setcounter{test}{0}
+\newenvironment{test}{
+    \ifnum\value{test} < 1
+        % Everything is fine
+        \stepcounter{test}
+    \else % Generate error if there is more then one test inside a document
+        \GenericError{Error}{There can only be one test in a document.}{}
+    \fi
+}{}
+
+\newcommand{\numberOfCandidates}{0}
+
+\newcommand{\answered}[1]{
+\ifnum #1 = 0
+    #1
+\else
+    \ifnum #1 > 0
+        $\dfrac{#1}{\numberOfCandidates}$
+    \else 
+        {}
+    \fi
+\fi
+}
+
+\endinput
+%%
+%% End of file `multiple-choice.sty'.
